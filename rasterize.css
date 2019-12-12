@@ -11,3 +11,25 @@
     top: 0px;
     z-index: 0;
 }
+
+.container {
+    position: relative;
+}
+#dead {
+    color: red;
+    font-style: oblique;
+    font-size: 90px;
+    position: absolute;
+    left: 280px;
+    top: 70px;
+}
+#overlay {
+    color: red;
+    font-style: oblique;
+    font-size: 40px;
+    position: absolute;
+    left: 50px;
+    top: 50px;
+}
+
+

@@ -57,6 +57,9 @@ var bSpeed = 0.05;
 var eSpeed = 0.005;
 var dir = 0;
 var bulletInd = [];
+var scoreNode;
+var overNode;
+var score = 0;
 // ASSIGNMENT HELPER FUNCTIONS
 
 // get the JSON file from the passed URL
@@ -334,6 +337,12 @@ function setupWebGL() {
     // create a webgl canvas and set it up
     var webGLCanvas = document.getElementById("myWebGLCanvas"); // create a webgl canvas
     gl = webGLCanvas.getContext("webgl"); // get a webgl object from it
+    var scoreEle = document.getElementById("score");
+    var overEle = document.getElementById("dead");
+    scoreNode = document.createTextNode("");
+    overNode = document.createTextNode("");
+    scoreEle.appendChild(scoreNode);
+    overEle.appendChild(overNode);
     try {
         if (gl == null) {
             throw "unable to create gl context -- is your browser gl ready?";
@@ -722,6 +731,7 @@ function addBullet(pos, dirc, type) {
     inputTriangles[index].glVertices = []; // flat coord list for webgl
     inputTriangles[index].glNormals = []; // flat normal list for webgl
     inputTriangles[index].glUvs = [];
+    inputTriangles[index].type = type;
     var numVerts = inputTriangles[index].vertices.length; // num vertices in tri set
     for (whichSetVert = 0; whichSetVert < numVerts; whichSetVert++) { // verts in set
         vtxToAdd = inputTriangles[index].vertices[whichSetVert]; // get vertex to add
@@ -790,6 +800,9 @@ function bulletBeh() {
         // check enemy
         var hIndex = hitEnemy(getPos(index), "bullet");
         if (hIndex) {
+            if (inputTriangles[index].type === 'bullet') {
+                score += 20;
+            }
             killEnemy(hIndex);
             removeBullet(index);
         } else {
@@ -805,7 +818,7 @@ function enemyBeh() {
 
     for (var i = 10; i < 13; i++) {
         var chance = Math.random();
-        if (chance > 0.990 || hitWalls(getPos(i), "enemy")) {
+        if (chance > 0.990 || hitWalls(getPos(i), "enemy") || hitEnemy(getPos(i), "enemmy")) {
             if (hitWalls(getPos(i), "enemy")) {
                 inputTriangles[i].dir = (inputTriangles[i].dir + 2) % 4;
             } else {
@@ -1030,7 +1043,7 @@ function getTexture(imageUrl) {
 function renderModels() {
 
     if (gameOver) {
-        console.log("gameOver");
+        overNode.nodeValue = 'GAME OVER';
         return;
     }
 
@@ -1183,6 +1196,12 @@ function renderModels() {
 
         } // end for each triangle set
     }
+
+    var c=document.getElementById("myImageCanvas");
+    var ctx=c.getContext("2d");
+
+    scoreNode.nodeValue = score;
+
 } // end render model
 
 function hitEnemy(pos, type) {
