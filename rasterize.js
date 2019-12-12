@@ -52,9 +52,9 @@ var Eye = vec3.clone(defaultEye); // eye position in world space
 var Center = vec3.clone(defaultCenter); // view direction in world space
 var Up = vec3.clone(defaultUp); // view up vector in world space
 var isPerspectiveProjection = true;
-var gamOver = false;
+var gameOver = false;
 var bSpeed = 0.05;
-var eSpeed = 0.03;
+var eSpeed = 0.005;
 var dir = 0;
 var bulletInd = [];
 // ASSIGNMENT HELPER FUNCTIONS
@@ -354,9 +354,9 @@ function setupWebGL() {
 function setRandomPlace(index) {
     console.log(index);
     do {
-        var newPosX = Math.random()*(3)-1;
-        var newPosZ = Math.random()*(3)-1;
-    } while (hitWalls([newPosX, 0.0, newPosZ], "enemy"));
+        var newPosX = Math.random() * (3) - 1;
+        var newPosZ = Math.random() * (3) - 1;
+    } while (hitWalls([newPosX, 0.0, newPosZ], "enemy") || hitEnemy([newPosX, 0.0, newPosZ], "enemy"));
     var pos = getPos(index);
     var offset = [newPosX - pos[0], 0.0, newPosZ - pos[2]];
     vec3.add(inputTriangles[index].translation, inputTriangles[index].translation, offset);
@@ -608,6 +608,7 @@ function loadModels() {
                 inputTriangles[whichSet].xAxis = vec3.fromValues(1, 0, 0); // model X axis
                 inputTriangles[whichSet].yAxis = vec3.fromValues(0, 1, 0); // model Y axis
                 inputTriangles[whichSet].texture = getTexture(URL + inputTriangles[whichSet].material.texture);
+                inputTriangles[whichSet].dir = 0;
                 if (inputTriangles[whichSet].material.alpha === 1) {
                     triIndex[0].push(whichSet);
                 } else {
@@ -662,7 +663,7 @@ function loadModels() {
             viewDelta = vec3.length(vec3.subtract(temp, maxCorner, minCorner)) / 100; // set global
         } // end if triangle file loaded
         for (var i = 0; i < 3; i++) {
-            setRandomPlace(10+i);
+            setRandomPlace(10 + i);
         }
     } // end try 
 
@@ -673,14 +674,14 @@ function loadModels() {
 
 function addBullet(pos, dirc, type) {
     if (type === "bullet") {
-        var color = [127,255,0];
+        var color = [127, 255, 0];
     } else {
-        var color = [106,90,205];
+        var color = [106, 90, 205];
     }
-    var offset = [[0,0,0.1], [-0.1, 0, 0], [0, 0, -0.1], [0.1,0,0]];
-    var center = [pos[0]-0.05, 0.05, pos[2]+0.05];
-    var bCenter = center.map((v, i)=>offset[dirc][i]+v);
-    var bPos = [bCenter[0]+0.0125, bCenter[1]-0.0125, bCenter[2]-0.0125];
+    var offset = [[0, 0, 0.1], [-0.1, 0, 0], [0, 0, -0.1], [0.1, 0, 0]];
+    var center = [pos[0] - 0.05, 0.05, pos[2] + 0.05];
+    var bCenter = center.map((v, i) => offset[dirc][i] + v);
+    var bPos = [bCenter[0] + 0.0125, bCenter[1] - 0.0125, bCenter[2] - 0.0125];
     var bullet = {
         "class": "bullet",
         "dir": dirc,
@@ -692,7 +693,7 @@ function addBullet(pos, dirc, type) {
             "alpha": 1.0,
             "texture": null
         },
-        "vertices": [[bPos[0], bPos[1],bPos[2]], [bPos[0]-0.025, bPos[1],bPos[2]], [bPos[0]-0.025, bPos[1],bPos[2]+0.025],[bPos[0], bPos[1],bPos[2]+0.025], [bPos[0], bPos[1]+0.025,bPos[2]], [bPos[0]-0.025, bPos[1]+0.025,bPos[2]], [bPos[0]-0.025, bPos[1]+0.025,bPos[2]+0.025],[bPos[0], bPos[1]+0.025,bPos[2]+0.025]],
+        "vertices": [[bPos[0], bPos[1], bPos[2]], [bPos[0] - 0.025, bPos[1], bPos[2]], [bPos[0] - 0.025, bPos[1], bPos[2] + 0.025], [bPos[0], bPos[1], bPos[2] + 0.025], [bPos[0], bPos[1] + 0.025, bPos[2]], [bPos[0] - 0.025, bPos[1] + 0.025, bPos[2]], [bPos[0] - 0.025, bPos[1] + 0.025, bPos[2] + 0.025], [bPos[0], bPos[1] + 0.025, bPos[2] + 0.025]],
         "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
         "uvs": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
         "triangles": [[3, 2, 1], [1, 0, 3], [4, 5, 6], [6, 7, 4], [0, 1, 5], [5, 4, 0], [3, 0, 4], [4, 7, 3], [1, 2, 6], [6, 5, 1], [2, 3, 7], [7, 6, 2]]
@@ -791,6 +792,30 @@ function bulletBeh() {
         if (hIndex) {
             killEnemy(hIndex);
             removeBullet(index);
+        } else {
+            if (hitPlayer(getPos(index))) {
+                gameOver = true;
+            }
+        }
+    }
+}
+
+function enemyBeh() {
+    var offset = [[0.0, 0.0, eSpeed], [-eSpeed, 0.0, 0.0], [0.0, 0.0, -eSpeed], [eSpeed, 0.0, 0.0]];
+
+    for (var i = 10; i < 13; i++) {
+        var chance = Math.random();
+        if (chance > 0.990 || hitWalls(getPos(i), "enemy")) {
+            if (hitWalls(getPos(i), "enemy")) {
+                inputTriangles[i].dir = (inputTriangles[i].dir + 2) % 4;
+            } else {
+                inputTriangles[i].dir = Math.floor(Math.random() * 4);
+            }
+        }
+        vec3.add(inputTriangles[i].translation, inputTriangles[i].translation, offset[inputTriangles[i].dir]);
+        chance = Math.random();
+        if (chance > 0.98) {
+            addBullet(getPos(i), inputTriangles[i].dir, "enemy");
         }
     }
 }
@@ -1004,7 +1029,13 @@ function getTexture(imageUrl) {
 // render the loaded model
 function renderModels() {
 
+    if (gameOver) {
+        console.log("gameOver");
+        return;
+    }
+
     bulletBeh();
+    enemyBeh();
 
     // construct the model transform matrix, based on model state
     function makeModelTransform(currModel) {
@@ -1056,14 +1087,16 @@ function renderModels() {
     mat4.multiply(pvMatrix, pvMatrix, vMatrix); // projection * view
 
     triIndex[1].sort(function (x, y) {
-        var temp = mat4.create();
-        var x_trans = mat4.fromTranslation(temp, inputTriangles[x].translation);
-        temp = mat4.create();
-        var y_trans = mat4.fromTranslation(temp, inputTriangles[y].translation);
-        temp = vec3.create();
-        var x_dis = vec3.distance(vec3.transformMat4(temp, inputTriangles[x].center, x_trans), defaultEye);
-        temp = vec3.create();
-        var y_dis = vec3.distance(vec3.transformMat4(temp, inputTriangles[y].center, y_trans), defaultEye);
+        // var temp = mat4.create();
+        // var x_trans = mat4.fromTranslation(temp, inputTriangles[x].translation);
+        // temp = mat4.create();
+        // var y_trans = mat4.fromTranslation(temp, inputTriangles[y].translation);
+        // temp = vec3.create();
+        // var x_dis = vec3.distance(vec3.transformMat4(temp, inputTriangles[x].center, x_trans), defaultEye);
+        // temp = vec3.create();
+        // var y_dis = vec3.distance(vec3.transformMat4(temp, inputTriangles[y].center, y_trans), defaultEye);
+        var x_dis = -getPos(x)[2];
+        var y_dis = -getPos(y)[2];
         if (x_dis < y_dis) {
             return -1;
         }
@@ -1081,7 +1114,7 @@ function renderModels() {
         for (var i = 0; i < triIndex[round].length; i++) {
             var whichTriSet = triIndex[round][i];
             currSet = inputTriangles[whichTriSet];
-            if (typeof(currSet) === "undefined") {
+            if (typeof (currSet) === "undefined") {
                 continue;
             }
 
@@ -1094,6 +1127,11 @@ function renderModels() {
                     }
                     if (currSet["class"] === "bullet") {
                         removeBullet(whichTriSet);
+                    }
+                }
+                if (currSet["class"] === "player") {
+                    if (hitEnemy(getPos(whichTriSet), "player")) {
+                        gameOver = true;
                     }
                 }
             }
@@ -1152,7 +1190,7 @@ function hitEnemy(pos, type) {
 
     for (var i = 10; i < 13; i++) {
         var ePos = getPos(i);
-        if ((pos[0] - offset[type] < ePos[0]) && (pos[0] > ePos[0] - 0.1) && (pos[2] - offset[type] > ePos[2] - 0.1) && (pos[2] < ePos[2] + 0.1)) {
+        if ((pos[0] - offset[type] < ePos[0]) && (pos[0] > ePos[0] - 0.1) && (pos[2] + offset[type] > ePos[2]) && (pos[2] < ePos[2] + 0.1)) {
             return i;
         }
     }
@@ -1162,7 +1200,7 @@ function hitEnemy(pos, type) {
 
 function hitWalls(pos, type) {
     // left wall
-    const offset = {"player": 0.1, "enemy":0.1, "bullet": 0.05};
+    const offset = {"player": 0.1, "enemy": 0.1, "bullet": 0.05};
     if (pos[0] > 1.0) {
         return true;
     }
@@ -1176,7 +1214,18 @@ function hitWalls(pos, type) {
     if (pos[2] + offset[type] > 1.0) {
         return true;
     }
-    if (0.05+offset[type] > pos[0] && pos[0] > -0.06 && (pos[2] > 0.20001+offset[type] || pos[2] < -0.4)) {
+    if (0.05 + offset[type] > pos[0] && pos[0] > -0.06 && (pos[2] > 0.20001 + offset[type] || pos[2] < -0.4)) {
+        return true;
+    }
+    return false;
+}
+
+function hitPlayer(pos) {
+    const offset = {"bullet": 0.05};
+    const type = "bullet";
+
+    var pPos = getPos(9);
+    if ((pos[0] - offset[type] < pPos[0]) && (pos[0] > pPos[0] - 0.1) && (pos[2] + offset[type] > pPos[2]) && (pos[2] < pPos[2] + 0.1)) {
         return true;
     }
     return false;
