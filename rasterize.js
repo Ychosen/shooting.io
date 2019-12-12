@@ -351,6 +351,18 @@ function setupWebGL() {
 
 } // end setupWebGL
 
+function setRandomPlace(index) {
+    console.log(index);
+    do {
+        var newPosX = Math.random()*(3)-1;
+        var newPosZ = Math.random()*(3)-1;
+    } while (hitWalls([newPosX, 0.0, newPosZ], "enemy"));
+    var pos = getPos(index);
+    var offset = [newPosX - pos[0], 0.0, newPosZ - pos[2]];
+    vec3.add(inputTriangles[index].translation, inputTriangles[index].translation, offset);
+    inputTriangles[index]["material"]["alpha"] = 0.99;
+}
+
 // read models in, load them into webgl buffers
 function loadModels() {
 
@@ -506,6 +518,57 @@ function loadModels() {
         {
             "class": "player",
             "material": {
+                "ambient": [0.0, 0.0, 0.7],
+                "diffuse": [1.0, 1.0, 1.0],
+                "specular": [1.0, 1.0, 1.0],
+                "n": 31,
+                "alpha": 0.99,
+                "texture": null
+            },
+            "vertices": [[0.5, 0.0, 0.0], [0.4, 0.0, 0.0], [0.4, 0.0, 0.1], [0.5, 0.0, 0.1],
+                [0.5, 0.1, 0.0], [0.4, 0.1, 0.0], [0.4, 0.1, 0.1], [0.5, 0.1, 0.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+            "triangles": [[3, 2, 1], [1, 0, 3], [4, 5, 6], [6, 7, 4], [0, 1, 5], [5, 4, 0], [3, 0, 4], [4, 7, 3], [1, 2, 6], [6, 5, 1], [2, 3, 7], [7, 6, 2]]
+        },
+        // enemy 1
+        {
+            "class": "enemy",
+            "material": {
+                "ambient": [0.5, 0.0, 0.0],
+                "diffuse": [1.0, 1.0, 1.0],
+                "specular": [1.0, 1.0, 1.0],
+                "n": 31,
+                "alpha": 0.99,
+                "texture": null
+            },
+            "vertices": [[0.5, 0.0, 0.0], [0.4, 0.0, 0.0], [0.4, 0.0, 0.1], [0.5, 0.0, 0.1],
+                [0.5, 0.1, 0.0], [0.4, 0.1, 0.0], [0.4, 0.1, 0.1], [0.5, 0.1, 0.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+            "triangles": [[3, 2, 1], [1, 0, 3], [4, 5, 6], [6, 7, 4], [0, 1, 5], [5, 4, 0], [3, 0, 4], [4, 7, 3], [1, 2, 6], [6, 5, 1], [2, 3, 7], [7, 6, 2]]
+        },
+        // enemy 2
+        {
+            "class": "enemy",
+            "material": {
+                "ambient": [0.5, 0.0, 0.0],
+                "diffuse": [1.0, 1.0, 1.0],
+                "specular": [1.0, 1.0, 1.0],
+                "n": 31,
+                "alpha": 0.99,
+                "texture": null
+            },
+            "vertices": [[0.5, 0.0, 0.0], [0.4, 0.0, 0.0], [0.4, 0.0, 0.1], [0.5, 0.0, 0.1],
+                [0.5, 0.1, 0.0], [0.4, 0.1, 0.0], [0.4, 0.1, 0.1], [0.5, 0.1, 0.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+            "triangles": [[3, 2, 1], [1, 0, 3], [4, 5, 6], [6, 7, 4], [0, 1, 5], [5, 4, 0], [3, 0, 4], [4, 7, 3], [1, 2, 6], [6, 5, 1], [2, 3, 7], [7, 6, 2]]
+        },
+        // enemy 3
+        {
+            "class": "enemy",
+            "material": {
                 "ambient": [0.5, 0.0, 0.0],
                 "diffuse": [1.0, 1.0, 1.0],
                 "specular": [1.0, 1.0, 1.0],
@@ -598,6 +661,9 @@ function loadModels() {
             var temp = vec3.create();
             viewDelta = vec3.length(vec3.subtract(temp, maxCorner, minCorner)) / 100; // set global
         } // end if triangle file loaded
+        for (var i = 0; i < 3; i++) {
+            setRandomPlace(10+i);
+        }
     } // end try 
 
     catch (e) {
@@ -702,16 +768,33 @@ function removeBullet(index) {
     }
 }
 
-function killEnemy(index) {
+function getPos(index) {
+    var temp = vec3.create();
+    var pos = vec3.add(temp, inputTriangles[index].translation, inputTriangles[index]['vertices'][0]);
+    return pos;
+}
 
+function killEnemy(index) {
+    vec3.add(inputTriangles[index].translation, inputTriangles[index].translation, [10.0, 0, 0]);
+    inputTriangles[index]["material"]["alpha"] = 0.0;
+    setTimeout(setRandomPlace, 1000, index);
 }
 
 function bulletBeh() {
     offset = [[0.0, 0.0, bSpeed], [-bSpeed, 0.0, 0.0], [0.0, 0.0, -bSpeed], [bSpeed, 0.0, 0.0]];
+    // move
     for (var index of bulletInd) {
         vec3.add(inputTriangles[index].translation, inputTriangles[index].translation, offset[inputTriangles[index].dir]);
+
+        // check enemy
+        var hIndex = hitEnemy(getPos(index), "bullet");
+        if (hIndex) {
+            killEnemy(hIndex);
+            removeBullet(index);
+        }
     }
 }
+
 // setup the webGL shaders
 function setupShaders() {
 
@@ -1063,6 +1146,19 @@ function renderModels() {
         } // end for each triangle set
     }
 } // end render model
+
+function hitEnemy(pos, type) {
+    const offset = {"player": 0.1, "bullet": 0.05};
+
+    for (var i = 10; i < 13; i++) {
+        var ePos = getPos(i);
+        if ((pos[0] - offset[type] < ePos[0]) && (pos[0] > ePos[0] - 0.1) && (pos[2] - offset[type] > ePos[2] - 0.1) && (pos[2] < ePos[2] + 0.1)) {
+            return i;
+        }
+    }
+    return false;
+
+}
 
 function hitWalls(pos, type) {
     // left wall
