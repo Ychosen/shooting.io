@@ -7,6 +7,7 @@ const LIGHTMAP_URL = "https://ncsucgclass.github.io/prog4/lightmap.gif";
 // const URL = "https://ncsucgclass.github.io/prog4/";
 const URL = "https://ychosen.github.io/";
 var defaultEye = vec3.fromValues(0.0, 1.4, -0.8); // default eye position in world space
+// var defaultEye = vec3.fromValues(0.0, 10, -0.8); // default eye position in world space
 var defaultCenter = vec3.fromValues(0.0, 0.0, 0.0); // default view direction in world space
 var defaultUp = vec3.fromValues(0, 1, 0); // default view up vector
 var lightAmbient = vec3.fromValues(1, 1, 1); // default light ambient emission
@@ -51,6 +52,11 @@ var Eye = vec3.clone(defaultEye); // eye position in world space
 var Center = vec3.clone(defaultCenter); // view direction in world space
 var Up = vec3.clone(defaultUp); // view up vector in world space
 var isPerspectiveProjection = true;
+var gamOver = false;
+var bSpeed = 0.05;
+var eSpeed = 0.03;
+var dir = 0;
+var bulletInd = [];
 // ASSIGNMENT HELPER FUNCTIONS
 
 // get the JSON file from the passed URL
@@ -82,20 +88,22 @@ function getJSONFile(url, descr) {
 
 // does stuff when keys are pressed
 function handleKeyDown(event) {
+    const whichModel = 9;
 
     const modelEnum = {TRIANGLES: "triangles", ELLIPSOID: "ellipsoid"}; // enumerated model type
     const dirEnum = {NEGATIVE: -1, POSITIVE: 1}; // enumerated rotation direction
 
-    function highlightModel(modelType, whichModel) {
-        if (handleKeyDown.modelOn != null)
-            handleKeyDown.modelOn.on = false;
-        handleKeyDown.whichOn = whichModel;
-        if (modelType == modelEnum.TRIANGLES)
-            handleKeyDown.modelOn = inputTriangles[whichModel];
-        else
-            handleKeyDown.modelOn = inputEllipsoids[whichModel];
-        handleKeyDown.modelOn.on = true;
-    } // end highlight model
+    // function highlightModel(modelType) {
+    //     if (handleKeyDown.modelOn != null)
+    //         handleKeyDown.modelOn.on = false;
+    handleKeyDown.whichOn = whichModel;
+    // if (modelType == modelEnum.TRIANGLES)
+    handleKeyDown.modelOn = inputTriangles[whichModel];
+    // else
+    //     handleKeyDown.modelOn = inputEllipsoids[whichModel];
+    handleKeyDown.modelOn.on = true;
+
+    // } // end highlight model
 
     function translateModel(offset) {
         if (handleKeyDown.modelOn != null)
@@ -125,10 +133,12 @@ function handleKeyDown(event) {
 
         // model selection
         case "Space":
-            if (handleKeyDown.modelOn != null)
-                handleKeyDown.modelOn.on = false; // turn off highlighted model
-            handleKeyDown.modelOn = null; // no highlighted model
-            handleKeyDown.whichOn = -1; // nothing highlighted
+            // if (handleKeyDown.modelOn != null)
+            //     handleKeyDown.modelOn.on = false; // turn off highlighted model
+            // handleKeyDown.modelOn = null; // no highlighted model
+            // handleKeyDown.whichOn = -1; // nothing highlighted
+            var pos = vec3.add(temp, inputTriangles[whichModel].translation, inputTriangles[whichModel]['vertices'][0]);
+            addBullet(pos, dir, "bullet");
             break;
         case "ArrowRight": // select next triangle set
             highlightModel(modelEnum.TRIANGLES, (handleKeyDown.whichOn + 1) % numTriangleSets);
@@ -147,32 +157,42 @@ function handleKeyDown(event) {
 
         // view change
         case "KeyA": // translate view left, rotate left with shift
-            Center = vec3.add(Center, Center, vec3.scale(temp, viewRight, viewDelta));
-            if (!event.getModifierState("Shift"))
-                Eye = vec3.add(Eye, Eye, vec3.scale(temp, viewRight, viewDelta));
+            dir = 3;
+            translateModel(vec3.scale(temp, viewRight, -viewDelta));
+            // Center = vec3.add(Center, Center, vec3.scale(temp, viewRight, viewDelta));
+            // if (!event.getModifierState("Shift"))
+            //     Eye = vec3.add(Eye, Eye, vec3.scale(temp, viewRight, viewDelta));
             break;
         case "KeyD": // translate view right, rotate right with shift
-            Center = vec3.add(Center, Center, vec3.scale(temp, viewRight, -viewDelta));
-            if (!event.getModifierState("Shift"))
-                Eye = vec3.add(Eye, Eye, vec3.scale(temp, viewRight, -viewDelta));
+            dir = 1;
+            translateModel(vec3.scale(temp, viewRight, viewDelta));
+            // Center = vec3.add(Center, Center, vec3.scale(temp, viewRight, -viewDelta));
+            // if (!event.getModifierState("Shift"))
+            //     Eye = vec3.add(Eye, Eye, vec3.scale(temp, viewRight, -viewDelta));
             break;
         case "KeyS": // translate view backward, rotate up with shift
-            if (event.getModifierState("Shift")) {
-                Center = vec3.add(Center, Center, vec3.scale(temp, Up, viewDelta));
-                Up = vec3.cross(Up, viewRight, vec3.subtract(lookAt, Center, Eye)); /* global side effect */
-            } else {
-                Eye = vec3.add(Eye, Eye, vec3.scale(temp, lookAt, -viewDelta));
-                Center = vec3.add(Center, Center, vec3.scale(temp, lookAt, -viewDelta));
-            } // end if shift not pressed
+            // translateModel(vec3.scale(temp, lookAt, -viewDelta));
+            dir = 2;
+            translateModel([0.0, 0.0, -0.05]);
+            // if (event.getModifierState("Shift")) {
+            //     Center = vec3.add(Center, Center, vec3.scale(temp, Up, viewDelta));
+            //     Up = vec3.cross(Up, viewRight, vec3.subtract(lookAt, Center, Eye)); /* global side effect */
+            // } else {
+            //     Eye = vec3.add(Eye, Eye, vec3.scale(temp, lookAt, -viewDelta));
+            //     Center = vec3.add(Center, Center, vec3.scale(temp, lookAt, -viewDelta));
+            // } // end if shift not pressed
             break;
         case "KeyW": // translate view forward, rotate down with shift
-            if (event.getModifierState("Shift")) {
-                Center = vec3.add(Center, Center, vec3.scale(temp, Up, -viewDelta));
-                Up = vec3.cross(Up, viewRight, vec3.subtract(lookAt, Center, Eye)); /* global side effect */
-            } else {
-                Eye = vec3.add(Eye, Eye, vec3.scale(temp, lookAt, viewDelta));
-                Center = vec3.add(Center, Center, vec3.scale(temp, lookAt, viewDelta));
-            } // end if shift not pressed
+            // translateModel(vec3.scale(temp, lookAt, viewDelta));
+            dir = 0;
+            translateModel([0.0, 0.0, 0.05]);
+            // if (event.getModifierState("Shift")) {
+            //     Center = vec3.add(Center, Center, vec3.scale(temp, Up, -viewDelta));
+            //     Up = vec3.cross(Up, viewRight, vec3.subtract(lookAt, Center, Eye)); /* global side effect */
+            // } else {
+            //     Eye = vec3.add(Eye, Eye, vec3.scale(temp, lookAt, viewDelta));
+            //     Center = vec3.add(Center, Center, vec3.scale(temp, lookAt, viewDelta));
+            // } // end if shift not pressed
             break;
         case "KeyQ": // translate view up, rotate counterclockwise with shift
             if (event.getModifierState("Shift"))
@@ -231,7 +251,7 @@ function handleKeyDown(event) {
             else
                 translateModel(vec3.scale(temp, lookAt, viewDelta));
             break;
-        case "KeyI": // translate up, rotate counterclockwise with shift 
+        case "KeyI": // translate up, rotate counterclockwise with shift
             if (event.getModifierState("Shift"))
                 rotateModel(lookAt, dirEnum.POSITIVE);
             else
@@ -340,77 +360,165 @@ function loadModels() {
     inputTriangles = [
         // floor
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":17, "alpha": 1.0, "texture": "rocktile.jpg"},
-            "vertices": [[1.0, 0.0, -1.0],[1.0, 0.0, 1.0],[-1.0, 0.0, 1.0],[-1.0, 0.0, -1.0]],
-            "normals": [[0, 1, 0],[0, 1, 0],[0, 1, 0],[0, 1, 0]],
-            "uvs": [[0,0], [0,1], [1,1], [1,0]],
-            "triangles": [[0,1,2],[2,3,0]]
+            "class": "env",
+            "material": {
+                "ambient": [0.0, 0.0, 0.0],
+                "diffuse": [0.0, 0.0, 0.0],
+                "specular": [0.0, 0.0, 0.0],
+                "n": 17,
+                "alpha": 1.0,
+                "texture": null
+            },
+            "vertices": [[1.0, 0.0, -1.0], [1.0, 0.0, 1.0], [-1.0, 0.0, 1.0], [-1.0, 0.0, -1.0]],
+            "normals": [[0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]],
+            "uvs": [[0, 0], [0, 1], [1, 1], [1, 0]],
+            "triangles": [[0, 1, 2], [2, 3, 0]]
         },
         // back wall
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[1.0, 0.0, 1.0],[1.0, 0.15, 1.0],[-1.0, 0.15, 1.0],[-1.0, 0.0, 1.0], [1.0, 0.15, 1.1],[-1.0, 0.15, 1.1]],
-            "normals": [[0, 0, -1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1]],
-            "uvs": [[0,0], [0,0.3], [1,0.3], [1,0], [0, 0.4], [1, 0.4]],
-            "triangles": [[0,1,2],[2,3,0], [1, 4, 5], [5, 2, 1]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[1.0, 0.0, 1.0], [1.0, 0.15, 1.0], [-1.0, 0.15, 1.0], [-1.0, 0.0, 1.0], [1.0, 0.15, 1.1], [-1.0, 0.15, 1.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0.3], [1, 0.3], [1, 0], [0, 0.4], [1, 0.4]],
+            "triangles": [[0, 1, 2], [2, 3, 0], [1, 4, 5], [5, 2, 1]]
         },
         // back barrier
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[0.05, 0.0, 0.4],[0.05, 0.0, 1.0],[-0.05, 0.0, 1.0],[-0.05, 0.0, 0.4],[0.05, 0.15, 0.4],[0.05, 0.15, 1.0],[-0.05, 0.15, 1.0],[-0.05, 0.15, 0.4]],
-            "normals": [[0, -1, 0],[0, -1, 0],[0, -1, 0],[0, -1, 0], [0, 1, 0],[0, 1, 0],[0, 1, 0],[0, 1, 0]],
-            "uvs": [[0,0], [0.8,0], [0.8,1.4], [0,1.4], [0, 0.6], [0.8, 0.6], [0.8,0.8], [0,0.8]],
-            "triangles": [[0,1,5],[5,4,0], [4,5,6], [6,7,4], [2,3,7],[7,6,2]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[0.05, 0.0, 0.4], [0.05, 0.0, 1.0], [-0.05, 0.0, 1.0], [-0.05, 0.0, 0.4], [0.05, 0.15, 0.4], [0.05, 0.15, 1.0], [-0.05, 0.15, 1.0], [-0.05, 0.15, 0.4]],
+            "normals": [[0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]],
+            "uvs": [[0, 0], [0.8, 0], [0.8, 1.4], [0, 1.4], [0, 0.6], [0.8, 0.6], [0.8, 0.8], [0, 0.8]],
+            "triangles": [[0, 1, 5], [5, 4, 0], [4, 5, 6], [6, 7, 4], [2, 3, 7], [7, 6, 2]]
         },
         // back barrier front
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[0.05, 0.0, 0.4],[0.05, 0.15, 0.4],[-0.05, 0.15, 0.4],[-0.05, 0.0, 0.4]],
-            "normals": [[0, -1, 0],[0, -1, 0],[0, -1, 0],[0, -1, 0]],
-            "uvs": [[0,0], [0.6,0], [0.6,0.2], [0,0.2]],
-            "triangles": [[0,1,2],[2,3,0]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[0.05, 0.0, 0.4], [0.05, 0.15, 0.4], [-0.05, 0.15, 0.4], [-0.05, 0.0, 0.4]],
+            "normals": [[0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0]],
+            "uvs": [[0, 0], [0.6, 0], [0.6, 0.2], [0, 0.2]],
+            "triangles": [[0, 1, 2], [2, 3, 0]]
         },
         // front wall
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[1.0, 0.0, -1.0],[1.0, 0.15, -1.0],[-1.0, 0.15, -1.0],[-1.0, 0.0, -1.0], [1.0, 0.15, -1.1],[-1.0, 0.15, -1.1]],
-            "normals": [[0, 0, -1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1]],
-            "uvs": [[0,0], [0,0.3], [1,0.3], [1,0], [0, 0.4], [1, 0.4]],
-            "triangles": [[0,1,2],[2,3,0], [1, 4, 5], [5, 2, 1]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[1.0, 0.0, -1.0], [1.0, 0.15, -1.0], [-1.0, 0.15, -1.0], [-1.0, 0.0, -1.0], [1.0, 0.15, -1.1], [-1.0, 0.15, -1.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0.3], [1, 0.3], [1, 0], [0, 0.4], [1, 0.4]],
+            "triangles": [[0, 1, 2], [2, 3, 0], [1, 4, 5], [5, 2, 1]]
         },
         // front barrier
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[0.05, 0.0, -0.4],[0.05, 0.0, -1.0],[-0.05, 0.0, -1.0],[-0.05, 0.0, -0.4],[0.05, 0.15, -0.4],[0.05, 0.15, -1.0],[-0.05, 0.15, -1.0],[-0.05, 0.15, -0.4]],
-            "normals": [[0, -1, 0],[0, -1, 0],[0, -1, 0],[0, -1, 0], [0, 1, 0],[0, 1, 0],[0, 1, 0],[0, 1, 0]],
-            "uvs": [[0,0], [0.8,0], [0.8,1.4], [0,1.4], [0, 0.6], [0.8, 0.6], [0.8,0.8], [0,0.8]],
-            "triangles": [[0,1,5],[5,4,0], [4,5,6], [6,7,4], [2,3,7],[7,6,2]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[0.05, 0.0, -0.4], [0.05, 0.0, -1.0], [-0.05, 0.0, -1.0], [-0.05, 0.0, -0.4], [0.05, 0.15, -0.4], [0.05, 0.15, -1.0], [-0.05, 0.15, -1.0], [-0.05, 0.15, -0.4]],
+            "normals": [[0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]],
+            "uvs": [[0, 0], [0.8, 0], [0.8, 1.4], [0, 1.4], [0, 0.6], [0.8, 0.6], [0.8, 0.8], [0, 0.8]],
+            "triangles": [[0, 1, 5], [5, 4, 0], [4, 5, 6], [6, 7, 4], [2, 3, 7], [7, 6, 2]]
         },
         // back barrier front
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[0.05, 0.0, -0.4],[0.05, 0.15, -0.4],[-0.05, 0.15, -0.4],[-0.05, 0.0, -0.4]],
-            "normals": [[0, -1, 0],[0, -1, 0],[0, -1, 0],[0, -1, 0]],
-            "uvs": [[0,0], [0.6,0], [0.6,0.2], [0,0.2]],
-            "triangles": [[0,1,2],[2,3,0]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[0.05, 0.0, -0.4], [0.05, 0.15, -0.4], [-0.05, 0.15, -0.4], [-0.05, 0.0, -0.4]],
+            "normals": [[0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0]],
+            "uvs": [[0, 0], [0.6, 0], [0.6, 0.2], [0, 0.2]],
+            "triangles": [[0, 1, 2], [2, 3, 0]]
         },
         // left wall
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[-1.0, 0.0, -1.1],[-1.0, 0.15, -1.1],[-1.1, 0.15, -1.1],[-1.0, 0.0, 1.1],[-1.0, 0.15, 1.1],[-1.1, 0.15, 1.1]],
-            "normals": [[0, 0, -1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1]],
-            "uvs": [[0,0], [0, 0.3], [0,0.5], [4.4,0], [4.4, 0.3], [4.4, 0.5]],
-            "triangles": [[0,3,4],[4,1,0], [1, 4, 5], [5, 2, 1]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[-1.0, 0.0, -1.1], [-1.0, 0.15, -1.1], [-1.1, 0.15, -1.1], [-1.0, 0.0, 1.1], [-1.0, 0.15, 1.1], [-1.1, 0.15, 1.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0.3], [0, 0.5], [4.4, 0], [4.4, 0.3], [4.4, 0.5]],
+            "triangles": [[0, 3, 4], [4, 1, 0], [1, 4, 5], [5, 2, 1]]
         },
         // left wall
         {
-            "material": {"ambient": [1.0,1.0,1.0], "diffuse": [0.6,0.6,0.4], "specular": [0.3,0.3,0.3], "n":15, "alpha": 1.0, "texture": "wall.jpg"},
-            "vertices": [[1.0, 0.0, -1.1],[1.0, 0.15, -1.1],[1.1, 0.15, -1.1],[1.0, 0.0, 1.1],[1.0, 0.15, 1.1],[1.1, 0.15, 1.1]],
-            "normals": [[0, 0, -1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1],[0, 0,-1]],
-            "uvs": [[0,0], [0, 0.3], [0,0.5], [4.4,0], [4.4, 0.3], [4.4, 0.5]],
-            "triangles": [[0,3,4],[4,1,0], [1, 4, 5], [5, 2, 1]]
+            "class": "env",
+            "material": {
+                "ambient": [1.0, 1.0, 1.0],
+                "diffuse": [0.6, 0.6, 0.4],
+                "specular": [0.3, 0.3, 0.3],
+                "n": 15,
+                "alpha": 1.0,
+                "texture": "wall.jpg"
+            },
+            "vertices": [[1.0, 0.0, -1.1], [1.0, 0.15, -1.1], [1.1, 0.15, -1.1], [1.0, 0.0, 1.1], [1.0, 0.15, 1.1], [1.1, 0.15, 1.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0.3], [0, 0.5], [4.4, 0], [4.4, 0.3], [4.4, 0.5]],
+            "triangles": [[0, 3, 4], [4, 1, 0], [1, 4, 5], [5, 2, 1]]
         },
-
+        // player
+        {
+            "class": "player",
+            "material": {
+                "ambient": [0.5, 0.0, 0.0],
+                "diffuse": [1.0, 1.0, 1.0],
+                "specular": [1.0, 1.0, 1.0],
+                "n": 31,
+                "alpha": 0.99,
+                "texture": null
+            },
+            "vertices": [[0.5, 0.0, 0.0], [0.4, 0.0, 0.0], [0.4, 0.0, 0.1], [0.5, 0.0, 0.1],
+                [0.5, 0.1, 0.0], [0.4, 0.1, 0.0], [0.4, 0.1, 0.1], [0.5, 0.1, 0.1]],
+            "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+            "uvs": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+            "triangles": [[3, 2, 1], [1, 0, 3], [4, 5, 6], [6, 7, 4], [0, 1, 5], [5, 4, 0], [3, 0, 4], [4, 7, 3], [1, 2, 6], [6, 5, 1], [2, 3, 7], [7, 6, 2]]
+        },
     ];
 
     try {
@@ -436,7 +544,7 @@ function loadModels() {
                 inputTriangles[whichSet].translation = vec3.fromValues(0, 0, 0); // no translation
                 inputTriangles[whichSet].xAxis = vec3.fromValues(1, 0, 0); // model X axis
                 inputTriangles[whichSet].yAxis = vec3.fromValues(0, 1, 0); // model Y axis
-                inputTriangles[whichSet].texture = getTexture(URL+inputTriangles[whichSet].material.texture);
+                inputTriangles[whichSet].texture = getTexture(URL + inputTriangles[whichSet].material.texture);
                 if (inputTriangles[whichSet].material.alpha === 1) {
                     triIndex[0].push(whichSet);
                 } else {
@@ -497,6 +605,99 @@ function loadModels() {
     } // end catch
 } // end load models
 
+function addBullet(pos, dirc, type) {
+    if (type === "bullet") {
+        var color = [127,255,0];
+    } else {
+        var color = [106,90,205];
+    }
+    var offset = [[0,0,0.1], [-0.1, 0, 0], [0, 0, -0.1], [0.1,0,0]];
+    var center = [pos[0]-0.05, 0.05, pos[2]+0.05];
+    var bCenter = center.map((v, i)=>offset[dirc][i]+v);
+    var bPos = [bCenter[0]+0.0125, bCenter[1]-0.0125, bCenter[2]-0.0125];
+    var bullet = {
+        "class": "bullet",
+        "dir": dirc,
+        "material": {
+            "ambient": color,
+            "diffuse": color,
+            "specular": color,
+            "n": 15,
+            "alpha": 1.0,
+            "texture": null
+        },
+        "vertices": [[bPos[0], bPos[1],bPos[2]], [bPos[0]-0.025, bPos[1],bPos[2]], [bPos[0]-0.025, bPos[1],bPos[2]+0.025],[bPos[0], bPos[1],bPos[2]+0.025], [bPos[0], bPos[1]+0.025,bPos[2]], [bPos[0]-0.025, bPos[1]+0.025,bPos[2]], [bPos[0]-0.025, bPos[1]+0.025,bPos[2]+0.025],[bPos[0], bPos[1]+0.025,bPos[2]+0.025]],
+        "normals": [[0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]],
+        "uvs": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+        "triangles": [[3, 2, 1], [1, 0, 3], [4, 5, 6], [6, 7, 4], [0, 1, 5], [5, 4, 0], [3, 0, 4], [4, 7, 3], [1, 2, 6], [6, 5, 1], [2, 3, 7], [7, 6, 2]]
+    };
+
+    var whichSetVert; // index of vertex in current triangle set
+    var whichSetTri; // index of triangle in current triangle set
+    var vtxToAdd; // vtx coords to add to the coord array
+    var normToAdd; // vtx normal to add to the coord array
+    var triToAdd; // tri indices to add to the index array
+    var uvsToAdd;
+    inputTriangles.push(bullet);
+    var index = inputTriangles.length - 1;
+    bulletInd.push(index);
+    inputTriangles[index].center = vec3.fromValues(0, 0, 0);  // center point of tri set
+    inputTriangles[index].on = false; // not highlighted
+    inputTriangles[index].translation = vec3.fromValues(0, 0, 0); // no translation
+    inputTriangles[index].xAxis = vec3.fromValues(1, 0, 0); // model X axis
+    inputTriangles[index].yAxis = vec3.fromValues(0, 1, 0); // model Y axis
+    inputTriangles[index].texture = getTexture(URL + inputTriangles[index].material.texture);
+    if (inputTriangles[index].material.alpha === 1) {
+        triIndex[0].push(index);
+    } else {
+        triIndex[1].push(index);
+    }
+    inputTriangles[index].glVertices = []; // flat coord list for webgl
+    inputTriangles[index].glNormals = []; // flat normal list for webgl
+    inputTriangles[index].glUvs = [];
+    var numVerts = inputTriangles[index].vertices.length; // num vertices in tri set
+    for (whichSetVert = 0; whichSetVert < numVerts; whichSetVert++) { // verts in set
+        vtxToAdd = inputTriangles[index].vertices[whichSetVert]; // get vertex to add
+        normToAdd = inputTriangles[index].normals[whichSetVert]; // get normal to add
+        uvsToAdd = inputTriangles[index].uvs[whichSetVert];
+        inputTriangles[index].glVertices.push(vtxToAdd[0], vtxToAdd[1], vtxToAdd[2]); // put coords in set coord list
+        inputTriangles[index].glNormals.push(normToAdd[0], normToAdd[1], normToAdd[2]); // put normal in set coord list
+        inputTriangles[index].glUvs.push(uvsToAdd[0], uvsToAdd[1]); // put normal in set coord list
+        vec3.add(inputTriangles[index].center, inputTriangles[index].center, vtxToAdd); // add to ctr sum
+    } // end for vertices in set
+    vec3.scale(inputTriangles[index].center, inputTriangles[index].center, 1 / numVerts); // avg ctr sum
+
+    // send the vertex coords and normals to webGL
+    vertexBuffers[index] = gl.createBuffer(); // init empty webgl set vertex coord buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffers[index]); // activate that buffer
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(inputTriangles[index].glVertices), gl.STATIC_DRAW); // data in
+    normalBuffers[index] = gl.createBuffer(); // init empty webgl set normal component buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffers[index]); // activate that buffer
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(inputTriangles[index].glNormals), gl.STATIC_DRAW); // data in
+    textureBuffers[index] = gl.createBuffer(); // init empty webgl set normal component buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffers[index]); // activate that buffer
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(inputTriangles[index].glUvs), gl.STATIC_DRAW); // data in
+
+    // set up the triangle index array, adjusting indices across sets
+    inputTriangles[index].glTriangles = []; // flat index list for webgl
+    triSetSizes[index] = inputTriangles[index].triangles.length; // number of tris in this set
+    for (whichSetTri = 0; whichSetTri < triSetSizes[index]; whichSetTri++) {
+        triToAdd = inputTriangles[index].triangles[whichSetTri]; // get tri to add
+        inputTriangles[index].glTriangles.push(triToAdd[0], triToAdd[1], triToAdd[2]); // put indices in set list
+    } // end for triangles in set
+
+    // send the triangle indices to webGL
+    triangleBuffers.push(gl.createBuffer()); // init empty triangle index buffer
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, triangleBuffers[index]); // activate that buffer
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(inputTriangles[index].glTriangles), gl.STATIC_DRAW); // data in
+}
+
+function bulletBeh() {
+    offset = [[0.0, 0.0, bSpeed], [-bSpeed, 0.0, 0.0], [0.0, 0.0, -bSpeed], [bSpeed, 0.0, 0.0]];
+    for (var index of bulletInd) {
+        vec3.add(inputTriangles[index].translation, inputTriangles[index].translation, offset[inputTriangles[index].dir]);
+    }
+}
 // setup the webGL shaders
 function setupShaders() {
 
@@ -680,7 +881,7 @@ function getTexture(imageUrl) {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     // pre fill with blue pixel
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-        new Uint8Array([255, 0, 0, 255]));
+        new Uint8Array([255, 255, 255, 255]));
     image.crossOrigin = "Anonymous";
     image.src = imageUrl;
     image.onload = function () {
@@ -706,6 +907,8 @@ function getTexture(imageUrl) {
 // render the loaded model
 function renderModels() {
 
+    bulletBeh();
+
     // construct the model transform matrix, based on model state
     function makeModelTransform(currModel) {
         var zAxis = vec3.create(), sumRotation = mat4.create(), temp = mat4.create(), negCtr = vec3.create();
@@ -714,8 +917,8 @@ function renderModels() {
         mat4.fromTranslation(mMatrix, vec3.negate(negCtr, currModel.center));
 
         // scale for highlighting if needed
-        if (currModel.on)
-            mat4.multiply(mMatrix, mat4.fromScaling(temp, vec3.fromValues(1.2, 1.2, 1.2)), mMatrix); // S(1.2) * T(-ctr)
+        // if (currModel.on)
+        //     mat4.multiply(mMatrix, mat4.fromScaling(temp, vec3.fromValues(1.2, 1.2, 1.2)), mMatrix); // S(1.2) * T(-ctr)
 
         // rotate the model to current interactive orientation
         vec3.normalize(zAxis, vec3.cross(zAxis, currModel.xAxis, currModel.yAxis)); // get the new model z axis
@@ -750,7 +953,7 @@ function renderModels() {
     if (isPerspectiveProjection)
         mat4.perspective(pMatrix, 0.5 * Math.PI, 1, 0.1, 10); // create projection matrix
     else
-        mat4.ortho(pMatrix, -0.5, .50, -0.50, 0.50, 0.1, 10);
+        mat4.ortho(pMatrix, -1.1, 1.1, -1.0, 1.0, 0.1, 10);
     mat4.lookAt(vMatrix, Eye, Center, Up); // create view matrix
     mat4.multiply(pvMatrix, pvMatrix, pMatrix); // projection
     mat4.multiply(pvMatrix, pvMatrix, vMatrix); // projection * view
@@ -777,11 +980,20 @@ function renderModels() {
     gl.depthMask(true);
     // render each triangle set
     var currSet; // the tri set and its material properties
-    for (var round = 0; round < 2; round ++) {
+    for (var round = 0; round < 2; round++) {
         for (var i = 0; i < triIndex[round].length; i++) {
             var whichTriSet = triIndex[round][i];
             currSet = inputTriangles[whichTriSet];
-            if ((round === 0 && currSet.material.alpha !== 1)|| (round === 1 && currSet.material.alpha === 1)) {
+            if (currSet.class !== "env") {
+                var temp = vec3.create();
+                var pos = vec3.add(temp, currSet.translation, currSet['vertices'][0]);
+                if (hitWalls(pos, currSet["class"])) {
+                    if (currSet["class"] === "player") {
+                        gameOver = true;
+                    }
+                }
+            }
+            if ((round === 0 && currSet.material.alpha !== 1) || (round === 1 && currSet.material.alpha === 1)) {
                 continue;
             }
 
@@ -831,6 +1043,27 @@ function renderModels() {
     }
 } // end render model
 
+function hitWalls(pos, type) {
+    // left wall
+    const offset = {"player": 0.1, "enemy":0.1, "bullet": 0.05};
+    if (pos[0] > 1.0) {
+        return true;
+    }
+    // right wall
+    if (pos[0] - offset[type] < -1.0) {
+        return true;
+    }
+    if (pos[2] < -1.001) {
+        return true;
+    }
+    if (pos[2] + offset[type] > 1.0) {
+        return true;
+    }
+    if (0.05+offset[type] > pos[0] && pos[0] > -0.06 && (pos[2] > 0.20001+offset[type] || pos[2] < -0.4)) {
+        return true;
+    }
+    return false;
+}
 
 /* MAIN -- HERE is where execution begins after window load */
 
