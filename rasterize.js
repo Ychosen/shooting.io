@@ -692,6 +692,20 @@ function addBullet(pos, dirc, type) {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(inputTriangles[index].glTriangles), gl.STATIC_DRAW); // data in
 }
 
+function removeBullet(index) {
+    delete inputTriangles[index];
+    for (var i = 0; i < bulletInd.length; i++) {
+        if (bulletInd[i] === index) {
+            bulletInd.splice(i, 1);
+            break;
+        }
+    }
+}
+
+function killEnemy(index) {
+
+}
+
 function bulletBeh() {
     offset = [[0.0, 0.0, bSpeed], [-bSpeed, 0.0, 0.0], [0.0, 0.0, -bSpeed], [bSpeed, 0.0, 0.0]];
     for (var index of bulletInd) {
@@ -984,12 +998,19 @@ function renderModels() {
         for (var i = 0; i < triIndex[round].length; i++) {
             var whichTriSet = triIndex[round][i];
             currSet = inputTriangles[whichTriSet];
+            if (typeof(currSet) === "undefined") {
+                continue;
+            }
+
             if (currSet.class !== "env") {
                 var temp = vec3.create();
                 var pos = vec3.add(temp, currSet.translation, currSet['vertices'][0]);
                 if (hitWalls(pos, currSet["class"])) {
                     if (currSet["class"] === "player") {
                         gameOver = true;
+                    }
+                    if (currSet["class"] === "bullet") {
+                        removeBullet(whichTriSet);
                     }
                 }
             }
